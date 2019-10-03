@@ -1,0 +1,52 @@
+---
+title: "P8105 Data Science I - Homework 3"
+author: "Kevin S.W."
+date: "10/3/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+Packages <- c("tidyverse", "dplyr", "ggridges", "hexbin", "patchwork")
+invisible(lapply(Packages, library, character.only = TRUE))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+```
+
+# Introduction
+Homework for showing capability in data visualization and exploratory data analysis
+
+# Problem 1
+
+```{r problem1}
+
+library(p8105.datasets)
+data("instacart")
+
+```
+
+The instacart dataset collects data on customers and the things they order from local groceries. Data that we're using are cleaned previously and is limited because it only contains data from `eval_set = train`; likely dataset used in model-building. The dataframe contains `r nrow(instacart)` observations from `r ncol(instacart)` categories. Key variables of note are primarily identifiers such as: 
+
+* `order_id`: Order
+* `product_id`: Identifier for the products ordered
+* `user_id`: User ID
+
+There are many more key variables inside the data but 
+
+The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. Then, do or answer the following (commenting on the results of each):
+
+How many aisles are there, and which aisles are the most items ordered from?
+Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
