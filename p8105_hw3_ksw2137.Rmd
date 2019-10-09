@@ -31,8 +31,14 @@ Homework for showing capability in data visualization and exploratory data analy
 
 ```{r instacart_data}
 
+# Loads instacart data from source
 library(p8105.datasets)
-insta_df <- data("instacart")
+data("instacart")
+
+# Assigns a new dataframe to the data-source to prevent frequent "reloads"
+### Not sure if necessary.
+insta_df <- instacart %>%  
+  janitor::clean_names()
 
 ```
 
@@ -40,26 +46,57 @@ The InstaCart dataset collects data on customers and the things they order from 
 
 * `order_id`: order identifier; if a person starts an order, all the items inside will have the same `order_id`
 * `product_id`: product identifier which links a value to certain products (e.g. 340 = cake, 255 = soda, etc)
-* `add_to_cart_order`: labels the items in a given order with 1, 2, 3,...
-* `reordered`: labels an item with 1 if a user had ordered it previously.
 * `user_id`: customer identifier; unique id for customers (Peanut's id = 1000, John's id = 13,...)
-* `order_number`: the nth order a particular user had reached (e.g. Bob has ordered 10 times, `order_number` = 10)
 * `order_dow`: the day of the week on which the order was placed (Mon, Tues, Wed,...)
 * `order_hour_of_day`: the hour of the day on which the order was placed (13:00, 21:00,...)
-* `days_since_prior_order`: days since the last order and resets after person 
-product_name: name of the product
-aisle_id: aisle identifier
-department_id: department identifier
-aisle: the name of the aisle
-department: the name of the department
-when Peanut (`user_id = 150`) started an order on Monday (`order_dow = 1`) at 13:00 (`order_hour_of_day = 13`), the order will be assigned an `order_id = 14802`, which is uniquely assigned for that particular order set. He then orders walnuts, cookies, and cereals; each with a unique `product_name` & `product_id` pair with indicators `aisle_id` & `department_id` - both linked to `aisle` & `department` respectively,  which allows the "shopper" to locate the item. As he placed his order into his "cart", the service tags each order with `add_to_cart_order` as an indicator which was ordered first, second, and so on within that particular order set. If Peanut re-ordered cookies, the service will mark this as "1" in the `reordered` category. Since this was Peanut's 10th order using InstaCart, the `order_number` is updated to 10, indicating his 10th use of the service. The service also records the `days_since_prior_order`, which starts counting after Peanut finished his order and resets when he re-orders at a later date. 
+* `product_name`: name of product such as "Organic Garlic", "Spring Water", or "Xpolsive Pizza Baked Snack Cracker"
+* `aisle_id`: aisle identifier that is linked to `aisle` as a unique identifier
+* `department_id`: department identifier
+* `aisle`: the name of the aisle such as fresh vegetables or yogurt
+* `department`: the name of the department (canned goods, snacks, frozen, ...)
+
+```{r instacart_explore}
+
+aisle_summary <- insta_df %>% 
+  select(product_name, aisle_id, aisle) %>% 
+  drop_na() %>% 
+  mutate(
+    aisle = as.factor(aisle),
+    aisle_id = as.factor(aisle_id)
+  ) %>% 
+  group_by(aisle, aisle_id) %>% 
+  summarize(
+    aisle_order_count = n()
+  ) %>% 
+  arrange(desc(aisle_order_count))
+
+```
+
+As indicated above, this is a very large dataset. It contains `r nrow(aisle_summary)` unique aisles and `r pull(aisle_summary, aisle)[pull(aisle_summary, aisle_order_count) == max(pull(aisle_summary, aisle_order_count))]` is/are the most ordered item with `r max(pull(aisle_summary, aisle_order_count))` orders. A graph below illustrates the spread of the number of items ordered in each aisle for items with more than 10,000 items ordered. 
+
+```{r }
+
+aisle_summary %>% 
+  filter(aisle_order_count > 10000) %>% 
+  ggplot(aes(x = aisle_order_count, color = aisle)) +
+    geom_bar(alpha = 0.3, binwidth = 5) +
+    #labs(title = "***", 
+     #  subtitle = "***",
+      # x = "***",
+       #y = "***",
+      # color = "***") +
+  theme(plot.title = element_text(hjust = 0.5, size = 18),
+        plot.subtitle = element_text(hjust = 0.5, size = 8),
+        legend.position = "none")
+
+```
 
 
+* Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
 
-How many aisles are there, and which aisles are the most items ordered from?
-Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
-Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
-Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+* Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+* Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 
 # Problem 2
 
