@@ -9,12 +9,12 @@ output: github_document
 
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-Packages <- c("tidyverse", "dplyr", "lubridate", "patchwork")
+Packages <- c("tidyverse", "dplyr", "patchwork")
 invisible(lapply(Packages, library, character.only = TRUE))
 
 options(
   ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis",
+  ggplot2.continuous.fill = "viridis"
   #lubridate.week.start = 
 )
 
@@ -126,19 +126,19 @@ insta_df %>%
 ### Problem 1c - Table for Mean Hour of Day at which Products are ordered.  
 * Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 
-```{r mean_hour_table}
+```{r mean_hour_table, results = "asis"}
 
-avg_hour_order <- insta_df %>% 
+insta_df %>% 
   select(order_dow, order_hour_of_day, product_name) %>% 
   drop_na() %>% 
   group_by(product_name, order_dow) %>% 
   summarize(mean_hour = mean(order_hour_of_day)) %>% 
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
-#%>% mutate(
-    #order_dow = wday(order_dow, label = T)) %>% 
+  mutate(
+    order_dow = lubridate::wday(order_dow + 1, label = T)) %>% 
   pivot_wider(names_from = order_dow,
               values_from = mean_hour) %>% 
-  knitr::kable()
+  knitr::kable(digits = 2)
 
 ```
 
@@ -156,10 +156,12 @@ data("brfss_smart2010")
 ### Not sure if necessary.
 brfss_df <- brfss_smart2010 %>%  
   janitor::clean_names() %>% 
+  mutate(
+    locationabbr = "state_abbr",
+    locationdesc = "county"
+  ) %>% 
   filter(topic == "Overall Health",
          response %in% c("Excellent", "Very Good", "Good", "Fair", "Poor"))
-
-  
 
 ```
 
@@ -167,8 +169,6 @@ brfss_df <- brfss_smart2010 %>%
 First, do some data cleaning:
 
 format the data to use appropriate variable names;
-focus on the “Overall Health” topic
-include only responses from “Excellent” to “Poor”
 organize responses as a factor taking levels ordered from “Poor” to “Excellent”
 Using this dataset, do or answer the following (commenting on the results of each):
 
