@@ -9,12 +9,13 @@ output: github_document
 
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
-Packages <- c("tidyverse", "dplyr", "ggridges", "hexbin", "patchwork")
+Packages <- c("tidyverse", "dplyr", "lubridate", "patchwork")
 invisible(lapply(Packages, library, character.only = TRUE))
 
 options(
   ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
+  ggplot2.continuous.fill = "viridis",
+  #lubridate.week.start = 
 )
 
 scale_colour_discrete = scale_colour_viridis_d
@@ -27,7 +28,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 # Introduction
 Homework for showing capability in data visualization and exploratory data analysis
 
-# Problem 1
+# Problem 1 - InstaCart Data Wrangling and Visualization
 
 ```{r instacart_data}
 
@@ -38,7 +39,12 @@ data("instacart")
 # Assigns a new dataframe to the data-source to prevent frequent "reloads"
 ### Not sure if necessary.
 insta_df <- instacart %>%  
-  janitor::clean_names()
+  janitor::clean_names() %>% 
+  mutate(
+    aisle = as.factor(str_to_title(aisle)),
+    aisle_id = as.factor(aisle_id),
+    department = as.factor(str_to_title(department))
+  )
 
 ```
 
@@ -55,15 +61,15 @@ The InstaCart dataset collects data on customers and the things they order from 
 * `aisle`: the name of the aisle such as fresh vegetables or yogurt
 * `department`: the name of the department (canned goods, snacks, frozen, ...)
 
+### Problem 1a - Data Cleaning/Tidying to Evaluate # of Items Ordered per Aisle
+
+This dataset is huge as indicated previously. As such, we have to filter out some things in the interest of efficiency. 
+
 ```{r instacart_explore}
 
 aisle_summary <- insta_df %>% 
   select(product_name, aisle_id, aisle) %>% 
   drop_na() %>% 
-  mutate(
-    aisle = as.factor(aisle),
-    aisle_id = as.factor(aisle_id)
-  ) %>% 
   group_by(aisle, aisle_id) %>% 
   summarize(
     aisle_order_count = n()
@@ -72,31 +78,69 @@ aisle_summary <- insta_df %>%
 
 ```
 
-As indicated above, this is a very large dataset. It contains `r nrow(aisle_summary)` unique aisles and `r pull(aisle_summary, aisle)[pull(aisle_summary, aisle_order_count) == max(pull(aisle_summary, aisle_order_count))]` is/are the most ordered item with `r max(pull(aisle_summary, aisle_order_count))` orders. A graph below illustrates the spread of the number of items ordered in each aisle for items with more than 10,000 items ordered. 
+After cleaning and filtering to only contain relevant columns for our aisle vs # of orders analysis, it shows that the filtered data contains `r nrow(aisle_summary)` unique aisles and `r pull(aisle_summary, aisle)[pull(aisle_summary, aisle_order_count) == max(pull(aisle_summary, aisle_order_count))]` is/are the most ordered item with `r max(pull(aisle_summary, aisle_order_count))` orders. 
 
-```{r }
+We then make a graph below to illustrate the relationship between numbers of item ordered and its associated aisle. 
+
+```{r aisle_order_plot, eval = TRUE, fig.width = 10, fig.align = "center"}
 
 aisle_summary %>% 
   filter(aisle_order_count > 10000) %>% 
-  ggplot(aes(x = aisle_order_count, color = aisle)) +
-    geom_bar(alpha = 0.3, binwidth = 5) +
-    #labs(title = "***", 
-     #  subtitle = "***",
-      # x = "***",
-       #y = "***",
-      # color = "***") +
-  theme(plot.title = element_text(hjust = 0.5, size = 18),
+  ggplot(aes(x = reorder(aisle, -aisle_order_count), 
+             y = aisle_order_count , 
+             fill = -aisle_order_count)) +
+  geom_bar(stat = "identity") +
+  labs(title = "# of Items Ordered for Each Aisle",
+       subtitle = "for Items with > 10,000 orders",
+       x = "Aisle of items (from most to least)",
+       y = "# of items ordered") +
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         plot.subtitle = element_text(hjust = 0.5, size = 8),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1.15, size = 8),
+        panel.grid.major.x = element_blank())
+
+```
+
+The graph shows the number of items ordered that are greater than 10,000 under the aisle category (e.g. butter is ordered `r pull(aisle_summary, aisle_order_count)[pull(aisle_summary, aisle) == "Butter"]` times). Arranged from most to least, we can see a huge gap between the top ~5 versus the rest. In the graph, there are a total of `r nrow(filter(aisle_summary, aisle_order_count > 10000))` items. 
+
+### Problem 1b - Making Table for Top 3 Items in Particular Aisles.
+
+First, we have to isolate our relevant columns and filter based on our needs.
+
+```{r insta_top3, results = "asis"}
+
+insta_df %>% 
+  select(product_name, aisle) %>% 
+  drop_na() %>% 
+  group_by(aisle, product_name) %>% 
+  summarize(product_count = n()) %>% 
+  top_n(3, wt = product_count) %>% 
+  filter(aisle %in% c("Baking Ingredients", "Dog Food Care", "Packaged Vegetables Fruits")) %>% 
+  arrange(aisle, desc(product_count)) %>% 
+  knitr::kable()
 
 ```
 
 
-* Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
-
-* Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
-
+### Problem 1c - Table for Mean Hour of Day at which Products are ordered.  
 * Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r mean_hour_table}
+
+avg_hour_order <- insta_df %>% 
+  select(order_dow, order_hour_of_day, product_name) %>% 
+  drop_na() %>% 
+  group_by(product_name, order_dow) %>% 
+  summarize(mean_hour = mean(order_hour_of_day)) %>% 
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+#%>% mutate(
+    #order_dow = wday(order_dow, label = T)) %>% 
+  pivot_wider(names_from = order_dow,
+              values_from = mean_hour)
+
+```
+
 
 # Problem 2
 
