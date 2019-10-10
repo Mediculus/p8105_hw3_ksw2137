@@ -5,11 +5,17 @@ date: "10/3/2019"
 output: github_document
 ---
 
-```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+```{r setup, include = FALSE, warning = FALSE, message = FALSE}
 
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE, 
+                      fig.width = 10, 
+                      fig.align = "center",
+                      results = "asis"
+                      )
 
-Packages <- c("tidyverse", "dplyr", "patchwork")
+Packages <- c("tidyverse", "dplyr", "lubridate")
 invisible(lapply(Packages, library, character.only = TRUE))
 
 options(
@@ -70,9 +76,7 @@ aisle_summary <- insta_df %>%
   select(product_name, aisle_id, aisle) %>% 
   drop_na() %>% 
   group_by(aisle, aisle_id) %>% 
-  summarize(
-    aisle_order_count = n()
-  ) %>% 
+  summarize(aisle_order_count = n()) %>% 
   arrange(desc(aisle_order_count))
 
 ```
@@ -81,24 +85,31 @@ After cleaning and filtering to only contain relevant columns for our aisle vs #
 
 We then make a graph below to illustrate the relationship between numbers of item ordered and its associated aisle. 
 
-```{r aisle_order_plot, eval = TRUE, fig.width = 10, fig.align = "center"}
+```{r aisle_order_plot, eval = TRUE}
 
 aisle_summary %>% 
   filter(aisle_order_count > 10000) %>% 
+  
   ggplot(aes(x = reorder(aisle, aisle_order_count), 
-             y = aisle_order_count , 
-             fill = -aisle_order_count)) +
+             y = aisle_order_count, 
+             fill = -aisle_order_count)
+         ) +
   geom_bar(stat = "identity") +
   labs(title = "# of Items Ordered for Each Aisle",
        subtitle = "for Items with > 10,000 orders",
-       x = "Aisle of items (from most to least)",
-       y = "# of items ordered") +
+       x = "Aisle Categories (from most to least)",
+       y = "Number of Items Ordered"
+       ) +
+  coord_flip() +
   theme(plot.title = element_text(hjust = 0.5, size = 12),
         plot.subtitle = element_text(hjust = 0.5, size = 8),
         legend.position = "none",
-        axis.text.y = element_text(angle = 10, hjust = 1, vjust = 1, size = 8),
-        panel.grid.major.y = element_blank()) +
-  coord_flip()
+        axis.text.y = 
+          element_text(hjust = 1, vjust = 0.5, 
+                       size = 8, angle = -10,
+                       margin = margin(0, -80, 0, 70)),
+        panel.grid.major.y = element_blank()
+        )
 
 ```
 
@@ -108,7 +119,7 @@ The graph shows the number of items ordered that are greater than 10,000 under t
 
 First, we have to isolate our relevant columns and filter based on our needs.
 
-```{r insta_top3, results = "asis"}
+```{r insta_top3}
 
 insta_df %>% 
   select(product_name, aisle) %>% 
@@ -116,7 +127,11 @@ insta_df %>%
   group_by(aisle, product_name) %>% 
   summarize(product_count = n()) %>% 
   top_n(3, wt = product_count) %>% 
-  filter(aisle %in% c("Baking Ingredients", "Dog Food Care", "Packaged Vegetables Fruits")) %>% 
+  filter(aisle %in% 
+           c("Baking Ingredients", 
+             "Dog Food Care", 
+             "Packaged Vegetables Fruits")
+         ) %>% 
   arrange(aisle, desc(product_count)) %>% 
   knitr::kable()
 
@@ -126,18 +141,23 @@ insta_df %>%
 ### Problem 1c - Table for Mean Hour of Day at which Products are ordered.  
 * Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 
-```{r mean_hour_table, results = "asis"}
+```{r mean_hour_table}
 
 insta_df %>% 
   select(order_dow, order_hour_of_day, product_name) %>% 
   drop_na() %>% 
   group_by(product_name, order_dow) %>% 
   summarize(mean_hour = mean(order_hour_of_day)) %>% 
-  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
-  mutate(
-    order_dow = lubridate::wday(order_dow + 1, label = T)) %>% 
+  filter(product_name %in% 
+           c("Pink Lady Apples", 
+             "Coffee Ice Cream")
+         ) %>% 
+  mutate(order_dow = 
+           lubridate::wday(order_dow + 1, label = T)
+         ) %>% 
   pivot_wider(names_from = order_dow,
-              values_from = mean_hour) %>% 
+              values_from = mean_hour
+              ) %>% 
   knitr::kable(digits = 2)
 
 ```
@@ -159,54 +179,67 @@ brfss_df <- brfss_smart2010 %>%
   rename(
     state = locationabbr,
     county = locationdesc
-  ) %>% 
+    ) %>% 
   filter(topic == "Overall Health",
-         response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
+         response %in% 
+           c("Excellent", 
+             "Very good", 
+             "Good", 
+             "Fair", 
+             "Poor")
+         ) %>% 
   mutate(
-    response = factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"))
-  )
+    response = 
+      factor(response,
+             levels = c("Poor",
+                        "Fair",
+                        "Good",
+                        "Very good",
+                        "Excellent"))
+    )
 
 ```
+
+### Problem 2a - wdawid
 
 ```{r brfss_plots}
 
 brfss_locations <- brfss_df %>% 
   group_by(year, state) %>% 
   select(year, state, county) %>% 
-  filter(year %in% c("2010", "2002")) %>% 
   summarize(county_per_state = n())
 
 # 2002 locations
 state_2002 <- brfss_locations %>% 
   filter(year == "2002",
-         county_per_state > 6) %>%
+         county_per_state > 6
+         ) %>%
   pivot_wider(names_from = state,
               values_from = county_per_state
-  ) %>% 
+              ) %>% 
   ungroup() %>% 
   select(-year)
 
 # Prints segmented tables for 2002 States
 knitr::kable(list(t1 = head(state_2002)[1:18],
-                  t2 = head(state_2002)[19:36]
-                  )
+                  t2 = head(state_2002)[19:36])
              )
 
 # 2010 locations
 state_2010 <- brfss_locations %>% 
   filter(year == "2010",
-         county_per_state > 6) %>%
+         county_per_state > 6
+         ) %>%
   pivot_wider(names_from = state,
               values_from = county_per_state
-  ) %>% 
+              ) %>% 
   ungroup() %>% 
   select(-year)
 
 # segmented tables for 2010
 knitr::kable(list(t1 = head(state_2010)[1:18],
                   t2 = head(state_2010)[19:35],
-                  t3 = head(state_2010)[36:45]
-                  )
+                  t3 = head(state_2010)[36:45])
              )
 
 ```
@@ -221,26 +254,28 @@ We also want to see
 
 Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
 
-```{r spaghetti_plot, fig.width = 10, fig.align = "center"}
+```{r spaghetti_plot}
 
-brfss_excellent <- brfss_df %>% 
+brfss_df %>% 
   select(response, year, state, data_value) %>% 
   group_by(year, state) %>% 
   filter(response == "Excellent") %>% 
   drop_na(data_value) %>% 
-  summarize(avg_data = mean(data_value))
-
-brfss_excellent %>% 
+  summarize(avg_data = mean(data_value)) %>% 
+  
   ggplot(aes(x = year, y = avg_data, color = state)) +
   geom_line(alpha = 0.7) +
-  theme(legend.position = "right") +
+  theme(legend.position = "right",
+        panel.background = element_rect(color = "gray96")
+        ) +
+  scale_x_discrete(limits = 2002:2010) +
   guides(color = guide_legend(override.aes = list(size = 6)))
 
 ```
 
 ### Problem 2c - Making plot of responses in NY
 
-```{r response_distr_plot}
+```{r response_distr_plot, fig.height = 5}
 
 brfss_df %>% 
   select(response, year, state, data_value) %>% 
@@ -255,11 +290,13 @@ brfss_df %>%
        subtitle = "in NYC State (Year 2006 & 2010)",
        x = "Overall Health Status",
        y = "# of Responses",
-       fill = "") +
-  facet_grid(year ~ .) +
+       fill = ""
+       ) +
+  facet_grid(. ~ year) +
   theme(plot.title = element_text(hjust = 0.5, size = 12),
         plot.subtitle = element_text(hjust = 0.5, size = 8),
-        panel.grid.major.x = element_blank())
+        panel.grid.major.x = element_blank()
+        )
 
 ```
 
@@ -276,20 +313,75 @@ accel_df <- read_csv("./data/accel_data.csv") %>%
                values_to = "activity_count"
                ) %>% 
   mutate(minute_mark = as.numeric(minute_mark),
-         day = factor(str_to_lower(day)),
-         day_type = case_when(day == "sunday" | day == "saturday" ~ "weekend",
-                              day != "sunday" | day != "saturday" ~ "weekday"
-                              ),
+         day = factor(day, 
+                      levels = c("Sunday", 
+                                 "Monday", 
+                                 "Tuesday",
+                                 "Wednesday", 
+                                 "Thursday",
+                                 "Friday",
+                                 "Saturday")),
+         day_type = case_when(
+           day == "Sunday" | day == "Saturday" ~ "Weekend",
+           day != "Sunday" | day != "Saturday" ~ "Weekday"),
          day_type = factor(day_type)
          ) %>% 
-  select(week, day_id, day, day_type, everything())
+  select(week, day_id, day, day_type, everything()) %>% 
+  group_by(week, day_id)
 
 ```
 
-Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable namesand encode data with reasonable variable classes. 
-
-Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+Load, tidy, and otherwise wrangle the data. reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
 
 Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
 
+```{r}
+
+daily_activ <- accel_df %>% 
+  select(week, day_id, day, activity_count) %>% 
+  summarize(daily_activ_count = sum(activity_count)) %>% 
+  ungroup() %>% 
+  select(-week) %>% 
+  pivot_wider(names_from = day_id,
+              values_from = daily_activ_count
+              )
+
+knitr::kable(
+  list(wk1 = head(daily_activ)[1:7],
+       wk2 = head(daily_activ)[8:14],
+       wk3 = head(daily_activ)[15:21],
+       wk4 = head(daily_activ)[22:28],
+       wk5 = head(daily_activ)[29:35])
+  )
+
+```
+
+
 Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+
+
+```{r daily_accel_plot}
+
+accel_df %>% 
+  ungroup() %>% 
+  select(day_id, day, minute_mark, activity_count) %>% 
+  group_by(day_id) %>% 
+  mutate(
+    minute_mark = as.Date(minute_mark)
+  ) %>% 
+  ggplot(aes(x = minute_mark, y = activity_count, fill = day)) +
+  geom_bar(stat = "identity", alpha = 1) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(legend.position = "right") +
+  scale_x_time(labels = "%h",
+               breaks = "1 hour",
+               minor_breaks = "15 minutes")
+  labs(title = "***",
+       subtitle = "***",
+       x = "***",
+       y = "***",
+       fill = ""
+       )
+
+```
+
