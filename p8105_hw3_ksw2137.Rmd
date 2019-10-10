@@ -15,7 +15,6 @@ invisible(lapply(Packages, library, character.only = TRUE))
 options(
   ggplot2.continuous.colour = "viridis",
   ggplot2.continuous.fill = "viridis"
-  #lubridate.week.start = 
 )
 
 scale_colour_discrete = scale_colour_viridis_d
@@ -86,7 +85,7 @@ We then make a graph below to illustrate the relationship between numbers of ite
 
 aisle_summary %>% 
   filter(aisle_order_count > 10000) %>% 
-  ggplot(aes(x = reorder(aisle, -aisle_order_count), 
+  ggplot(aes(x = reorder(aisle, aisle_order_count), 
              y = aisle_order_count , 
              fill = -aisle_order_count)) +
   geom_bar(stat = "identity") +
@@ -97,8 +96,9 @@ aisle_summary %>%
   theme(plot.title = element_text(hjust = 0.5, size = 12),
         plot.subtitle = element_text(hjust = 0.5, size = 8),
         legend.position = "none",
-        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1.15, size = 8),
-        panel.grid.major.x = element_blank())
+        axis.text.y = element_text(angle = 10, hjust = 1, vjust = 1, size = 8),
+        panel.grid.major.y = element_blank()) +
+  coord_flip()
 
 ```
 
@@ -163,7 +163,7 @@ brfss_df <- brfss_smart2010 %>%
   filter(topic == "Overall Health",
          response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>% 
   mutate(
-    response = factor(response, levels = c("Poor", "Fair", "Good", "Very Good", "Excellent"))
+    response = factor(response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"))
   )
 
 ```
@@ -177,25 +177,41 @@ brfss_locations <- brfss_df %>%
   summarize(county_per_state = n())
 
 # 2002 locations
-brfss_locations %>% 
+state_2002 <- brfss_locations %>% 
   filter(year == "2002",
-         county_per_state > 6) %>% 
-  knitr::kable()
+         county_per_state > 6) %>%
+  pivot_wider(names_from = state,
+              values_from = county_per_state
+  ) %>% 
+  ungroup() %>% 
+  select(-year)
+
+# Prints segmented tables for 2002 States
+knitr::kable(list(t1 = head(state_2002)[1:18],
+                  t2 = head(state_2002)[19:36]
+                  )
+             )
 
 # 2010 locations
-brfss_locations %>% 
+state_2010 <- brfss_locations %>% 
   filter(year == "2010",
-         county_per_state >6) %>% 
-  knitr::kable()
+         county_per_state > 6) %>%
+  pivot_wider(names_from = state,
+              values_from = county_per_state
+  ) %>% 
+  ungroup() %>% 
+  select(-year)
 
-# excellent responses
-brfss_locations
+# segmented tables for 2010
+knitr::kable(list(t1 = head(state_2010)[1:18],
+                  t2 = head(state_2010)[19:35],
+                  t3 = head(state_2010)[36:45]
+                  )
+             )
 
 ```
 
-In 2002, which states were observed at 7 or more locations? What about in 2010?
-
-in 2002 = total 49, over 6, 36
+in 2002 = total 49 states, over 6, 36
 Montana = data start from 2004
 VA = start from 2007
 
@@ -205,27 +221,75 @@ We also want to see
 
 Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
 
-```{r}
+```{r spaghetti_plot, fig.width = 10, fig.align = "center"}
 
 brfss_excellent <- brfss_df %>% 
   select(response, year, state, data_value) %>% 
   group_by(year, state) %>% 
   filter(response == "Excellent") %>% 
+  drop_na(data_value) %>% 
   summarize(avg_data = mean(data_value))
+
+brfss_excellent %>% 
+  ggplot(aes(x = year, y = avg_data, color = state)) +
+  geom_line(alpha = 0.7) +
+  theme(legend.position = "right") +
+  guides(color = guide_legend(override.aes = list(size = 6)))
+
+```
+
+### Problem 2c - Making plot of responses in NY
+
+```{r response_distr_plot}
+
+brfss_df %>% 
+  select(response, year, state, data_value) %>% 
+  group_by(year, state) %>% 
+  filter(state == "NY",
+         year %in% c("2006", "2010")) %>% 
+  drop_na(response) %>% 
+  
+  ggplot(aes(x = response, y = data_value, fill = response)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Number of Responses to Overall Health Status",
+       subtitle = "in NYC State (Year 2006 & 2010)",
+       x = "Overall Health Status",
+       y = "# of Responses",
+       fill = "") +
+  facet_grid(year ~ .) +
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
+        plot.subtitle = element_text(hjust = 0.5, size = 8),
+        panel.grid.major.x = element_blank())
 
 ```
 
 
-Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
-
-
 # Problem 3
-Accelerometers have become an appealing alternative to self-report techniques for studying physical activity in observational studies and clinical trials, largely because of their relative objectivity. During observation periods, the devices measure “activity counts” in a short period; one-minute intervals are common. Because accelerometers can be worn comfortably and unobtrusively, they produce around-the-clock observations.
 
-This problem uses five weeks of accelerometer data collected on a 63 year-old male with BMI 25, who was admitted to the Advanced Cardiac Care Center of Columbia University Medical Center and diagnosed with congestive heart failure (CHF). The data can be downloaded here. In this spreadsheet, variables activity.* are the activity counts for each minute of a 24-hour day starting at midnight.
+```{r accel_data}
 
-Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+accel_df <- read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  pivot_longer(activity_1:activity_1440,
+               names_to = "minute_mark",
+               names_prefix = "activity_",
+               values_to = "activity_count"
+               ) %>% 
+  mutate(minute_mark = as.numeric(minute_mark),
+         day = factor(str_to_lower(day)),
+         day_type = case_when(day == "sunday" | day == "saturday" ~ "weekend",
+                              day != "sunday" | day != "saturday" ~ "weekday"
+                              ),
+         day_type = factor(day_type)
+         ) %>% 
+  select(week, day_id, day, day_type, everything())
+
+```
+
+Load, tidy, and otherwise wrangle the data. Your final dataset should include all originally observed variables and values; have useful variable namesand encode data with reasonable variable classes. 
+
+Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
 Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+
 Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
-Optional post-assignment survey
-If you’d like, a you can complete this short survey after you’ve finished the assignment.
