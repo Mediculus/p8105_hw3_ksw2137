@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       results = "asis"
                       )
 
-Packages <- c("tidyverse", "dplyr", "lubridate")
+Packages <- c("tidyverse", "dplyr")
 invisible(lapply(Packages, library, character.only = TRUE))
 
 options(
@@ -41,11 +41,13 @@ Homework for showing capability in data visualization and exploratory data analy
 library(p8105.datasets)
 data("instacart")
 
+
+
 # Assigns a new dataframe to the data-source to prevent frequent "reloads"
 ### Not sure if necessary.
 insta_df <- instacart %>%  
-  janitor::clean_names() %>% 
-  mutate(
+  janitor::clean_names() %>%                            # cleans loaded df to lower case and snake_case
+  mutate(                                               # turns aisle, aisle_id, and department into factors
     aisle = as.factor(str_to_title(aisle)),
     aisle_id = as.factor(aisle_id),
     department = as.factor(str_to_title(department))
@@ -66,129 +68,134 @@ The InstaCart dataset collects data on customers and the things they order from 
 * `aisle`: the name of the aisle such as fresh vegetables or yogurt
 * `department`: the name of the department (canned goods, snacks, frozen, ...)
 
-### Problem 1a - Data Cleaning/Tidying to Evaluate # of Items Ordered per Aisle
+### Problem 1a - Making Graph for Top Aisle Categories 
 
 This dataset is huge as indicated previously. As such, we have to filter out some things in the interest of efficiency. 
 
 ```{r instacart_explore}
 
-aisle_summary <- insta_df %>% 
-  select(product_name, aisle_id, aisle) %>% 
-  drop_na() %>% 
-  group_by(aisle, aisle_id) %>% 
-  summarize(aisle_order_count = n()) %>% 
-  arrange(desc(aisle_order_count))
+aisle_item_count <- insta_df %>%                   # assigned source df to a new one for wrangling
+  select(product_name, aisle_id, aisle) %>%        # select relevant columns
+  drop_na() %>%                                    # drops any NA
+  group_by(aisle, aisle_id) %>%                    # group by aisle & aisle_id
+  summarize(aisle_order_count = n()) %>%           # creates a new column that counts unique orders in each aisle
+  arrange(desc(aisle_order_count))                 # re-arrange to decreasing order
 
 ```
 
-After cleaning and filtering to only contain relevant columns for our aisle vs # of orders analysis, it shows that the filtered data contains `r nrow(aisle_summary)` unique aisles and `r pull(aisle_summary, aisle)[pull(aisle_summary, aisle_order_count) == max(pull(aisle_summary, aisle_order_count))]` is/are the most ordered item with `r max(pull(aisle_summary, aisle_order_count))` orders. 
-
-We then make a graph below to illustrate the relationship between numbers of item ordered and its associated aisle. 
+The cleaned and filtered data for our aisle vs order count contains `r nrow(aisle_item_count)` unique aisle categories. `r pull(aisle_item_count, aisle)[pull(aisle_item_count, aisle_order_count) == max(pull(aisle_item_count, aisle_order_count))]` is/are the most ordered category with `r max(pull(aisle_item_count, aisle_order_count))` orders. We then make a graph below to illustrate the top `r nrow(aisle_item_count)` most ordered categories. 
 
 ```{r aisle_order_plot, eval = TRUE}
 
-aisle_summary %>% 
-  filter(aisle_order_count > 10000) %>% 
+aisle_item_count %>% 
+  filter(aisle_order_count > 10000) %>%                          # filters to contain counts > 10,000
   
-  ggplot(aes(x = reorder(aisle, aisle_order_count), 
+  ggplot(aes(x = reorder(aisle, aisle_order_count),              # make a plot of count vs aisle category
              y = aisle_order_count, 
-             fill = -aisle_order_count)
+             fill = -aisle_order_count)                          # set fill based on count in decreasing order
          ) +
-  geom_bar(stat = "identity") +
-  labs(title = "# of Items Ordered for Each Aisle",
+  geom_bar(stat = "identity") +                                  # bar plot with factors in x-axis
+  labs(title = "# of Items Ordered for Each Aisle",              # assigns labels
        subtitle = "for Items with > 10,000 orders",
        x = "Aisle Categories (from most to least)",
        y = "Number of Items Ordered"
        ) +
-  coord_flip() +
-  theme(plot.title = element_text(hjust = 0.5, size = 12),
-        plot.subtitle = element_text(hjust = 0.5, size = 8),
-        legend.position = "none",
+  coord_flip() +                                                 # flip x-y to better "stratify" categories
+  theme(plot.title = element_text(hjust = 0.5, size = 12),       # adjusts title text size, alignment
+        plot.subtitle = element_text(hjust = 0.5, size = 8),     # adjusts subtitle size, alignment
+        legend.position = "none",                                # remove legends
         axis.text.y = 
-          element_text(hjust = 1, vjust = 0.5, 
-                       size = 8, angle = -10,
-                       margin = margin(0, -80, 0, 70)),
-        panel.grid.major.y = element_blank()
+          element_text(hjust = 1, vjust = 0.5,                   # adjusts the hor/ver alignment of y-variables
+                       size = 8, angle = -10,                    # resize text size and rotate at an angle
+                       margin = margin(0, -80, 0, 70)),          # reduce margin to close gap between label/graph
+        panel.grid.major.y = element_blank()                     # remove horizontal lines to improve readability
         )
 
 ```
 
-The graph shows the number of items ordered that are greater than 10,000 under the aisle category (e.g. butter is ordered `r pull(aisle_summary, aisle_order_count)[pull(aisle_summary, aisle) == "Butter"]` times). Arranged from most to least, we can see a huge gap between the top ~5 versus the rest. In the graph, there are a total of `r nrow(filter(aisle_summary, aisle_order_count > 10000))` items. 
+The graph shows aisle categories with orders greater than 10,000 (e.g. butter-related items are ordered `r pull(aisle_item_count, aisle_order_count)[pull(aisle_item_count, aisle) == "Butter"]` times). Arranged from most to least, we can see a huge gap between the top ~5 versus the rest. In the graph, there are a total of `r nrow(filter(aisle_item_count, aisle_order_count > 10000))` items. 
 
-### Problem 1b - Making Table for Top 3 Items in Particular Aisles.
+### Problem 1b - Table for Top 3 Items in Particular Aisles
 
-First, we have to isolate our relevant columns and filter based on our needs.
+We are also interested in the top 3 items in the "Baking Ingredients", "Dog Food Care", and "Packaged Vegetables Fruits" categories. Similarly, we need to filter our base dataframe to obtain these variables of interest.
 
 ```{r insta_top3}
 
 insta_df %>% 
-  select(product_name, aisle) %>% 
-  drop_na() %>% 
-  group_by(aisle, product_name) %>% 
-  summarize(product_count = n()) %>% 
-  top_n(3, wt = product_count) %>% 
-  filter(aisle %in% 
+  select(product_name, aisle) %>%                 # pick relevant columns
+  drop_na() %>%                                   # drop any NA
+  group_by(aisle, product_name) %>%               # group by aisle and unique products within 
+  summarize(product_count = n()) %>%              # make a new df that sums each unique product counts
+  top_n(3, wt = product_count) %>%                # picks the top 3 from the product counts
+  filter(aisle %in%                               # filter aisle to contain categories of interest
            c("Baking Ingredients", 
              "Dog Food Care", 
              "Packaged Vegetables Fruits")
          ) %>% 
-  arrange(aisle, desc(product_count)) %>% 
-  knitr::kable()
+  arrange(aisle, desc(product_count)) %>%         # arranges each aisle in decreasing order of product count
+  rename("Aisle Category" = aisle,                # rename column variable to better present table
+         "Product Name" = product_name,
+         "Product Count" = product_count) %>%
+  knitr::kable()                                  # prints table
 
 ```
 
+The table above is a 9 x 3 grid; arranged first by aisle category in alphabetical order then by product count in decreasing order (from 1st - 3rd). Surprisingly packaged vegetables are, in general, much more popular compared to the other two. 
 
-### Problem 1c - Table for Mean Hour of Day at which Products are ordered.  
-* Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+### Problem 1c - Table for Mean Hour-of-Day to Order Certain Products   
+In this problem, we raise the question "what is the typical time that item x gets ordered in day y?". Particularly, we're interested in "Pink Lady Apples" and "Coffee Ice Cream". We will also split the time by day.
 
 ```{r mean_hour_table}
 
 insta_df %>% 
-  select(order_dow, order_hour_of_day, product_name) %>% 
-  drop_na() %>% 
-  group_by(product_name, order_dow) %>% 
-  summarize(mean_hour = mean(order_hour_of_day)) %>% 
-  filter(product_name %in% 
+  select(order_dow, order_hour_of_day, product_name) %>%      # select relevant columns
+  drop_na() %>%                                               # drop any NA
+  group_by(product_name, order_dow) %>%                       # group by specified variables
+  summarize(mean_hour = mean(order_hour_of_day)) %>%          # obtain the average hour for each product
+  filter(product_name %in%                                    # filter product
            c("Pink Lady Apples", 
              "Coffee Ice Cream")
          ) %>% 
-  mutate(order_dow = 
-           lubridate::wday(order_dow + 1, label = T)
+  mutate(order_dow =                                          # changes date from "1" to "Sun"
+           lubridate::wday(order_dow + 1, label = T)          # used +1 to shift range from [0,6] to [1,7]
          ) %>% 
-  pivot_wider(names_from = order_dow,
+  rename("Product Name" = product_name) %>%                   # rename column name
+  pivot_wider(names_from = order_dow,                         # change to wide form for easy comparison
               values_from = mean_hour
               ) %>% 
-  knitr::kable(digits = 2)
+  knitr::kable(digits = 2)                                    # prints table and restricts to 2 decimal places
 
 ```
 
+The resulting table is a 2 x 7 table that gives the average hour these listed two items are ordered by day. Somewhat expected, the orders are typically done in the afternoon range.
 
 # Problem 2
 
-For this problem, we will be loading the BRFSS data included in the p8105 package. As the data is huge and there were places where it's not tidy, we should tidy this up first by first focusing on pertinent information (i.e. topic = "Overall Health and only "Excellent" - "Poor" responses). 
+For this problem, we will be loading the BRFSS (Behavioral Risk Factors Surveillance System) data included in the p8105 package. As the data is huge and there were places where it's not tidy, we should tidy this up first by focusing on pertinent information (i.e. topic = "Overall Health and only "Excellent" - "Poor" responses). 
 
 ```{r brfss_load}
 
 # Loads BRFSS data from source
 data("brfss_smart2010")
 
+
 # Assigns a new dataframe to the data-source to prevent frequent "reloads"
 ### Not sure if necessary.
 brfss_df <- brfss_smart2010 %>%  
-  janitor::clean_names() %>% 
-  rename(
+  janitor::clean_names() %>%             # turns column variables to lower_snake_case
+  rename(                                # rename these variables to better describe the data inside
     state = locationabbr,
     county = locationdesc
     ) %>% 
-  filter(topic == "Overall Health",
-         response %in% 
+  filter(topic == "Overall Health",      # filter df by topic of interest
+         response %in%                   # and by specified survey response
            c("Excellent", 
              "Very good", 
              "Good", 
              "Fair", 
              "Poor")
          ) %>% 
-  mutate(
+  mutate(                                # mutates the response variables to factor and re-order as well
     response = 
       factor(response,
              levels = c("Poor",
@@ -200,53 +207,57 @@ brfss_df <- brfss_smart2010 %>%
 
 ```
 
-### Problem 2a - wdawid
+### Problem 2a - Table of Number of State with >6 Participating Counties in 2002 vs 2010
+In this problem, we will be filtering relevant data in order to make a table that lists the number of counties that participated from each state in the year 2002 vs 2010.
 
-```{r brfss_plots}
+```{r brfss_count_table}
 
-brfss_locations <- brfss_df %>% 
-  group_by(year, state) %>% 
-  select(year, state, county) %>% 
-  summarize(county_per_state = n())
+# base df
+brfss_count_loc <- brfss_df %>%                        # assigns a baseline, modified df for further cleaning
+  group_by(year, state) %>%                            # group by year and state
+  select(year, state, county) %>%                      # selects relevant columns
+  summarize(county_per_state = n())                    # counts up the number of counties in each state
 
-# 2002 locations
-state_2002 <- brfss_locations %>% 
-  filter(year == "2002",
+
+
+# 2002 location count per state
+count_loc_2002 <- brfss_count_loc %>%                  # assigns a new df for 2002 counts
+  filter(year == "2002",                               # filter by year 2002 and counts > 6
          county_per_state > 6
          ) %>%
-  pivot_wider(names_from = state,
+  pivot_wider(names_from = state,                      # turn to wide form for kable()
               values_from = county_per_state
               ) %>% 
-  ungroup() %>% 
-  select(-year)
+  ungroup() %>%                                        # ungroup so select can remove year column
+  select(-year)                                        # remove year column
 
 # Prints segmented tables for 2002 States
-knitr::kable(list(t1 = head(state_2002)[1:18],
-                  t2 = head(state_2002)[19:36])
+knitr::kable(list(t1 = head(count_loc_2002)[1:18],     # prints out the first half of the table
+                  t2 = head(count_loc_2002)[19:36])    # prints the second half
              )
 
-# 2010 locations
-state_2010 <- brfss_locations %>% 
-  filter(year == "2010",
+
+
+# 2010 location counts per state
+count_loc_2010 <- brfss_count_loc %>%                      # assigns a new df for 2002 counts
+  filter(year == "2010",                               # filter by year 2002 and counts > 6
          county_per_state > 6
          ) %>%
-  pivot_wider(names_from = state,
+  pivot_wider(names_from = state,                      # turn to wide form for kable()
               values_from = county_per_state
               ) %>% 
-  ungroup() %>% 
-  select(-year)
+  ungroup() %>%                                        # ungroup so select can remove year column
+  select(-year)                                        # remove year column
 
 # segmented tables for 2010
-knitr::kable(list(t1 = head(state_2010)[1:18],
-                  t2 = head(state_2010)[19:35],
-                  t3 = head(state_2010)[36:45])
+knitr::kable(list(t1 = head(count_loc_2010)[1:18],         # prints the first segment of table
+                  t2 = head(count_loc_2010)[19:35],        # prints second segment
+                  t3 = head(count_loc_2010)[36:45])        # prints third segment
              )
 
 ```
 
-in 2002 = total 49 states, over 6, 36
-Montana = data start from 2004
-VA = start from 2007
+The resulting table contains `r ncol(count_loc_2002)` states and `r ncol(count_loc_2010` states in 2002 and 2010 respectively. Interestingly, while working on the table, I noticed that there are 49 states in the 2002 data but 51 states in 2010. After investigating, this is because Montana (MT) started participating in 2004 and Virginia (VA) in 2007. 
 
 ### Problem 2b - excellent response
 
@@ -373,9 +384,6 @@ accel_df %>%
   geom_bar(stat = "identity", alpha = 1) +
   guides(color = guide_legend(override.aes = list(size = 5))) +
   theme(legend.position = "right") +
-  scale_x_time(labels = "%h",
-               breaks = "1 hour",
-               minor_breaks = "15 minutes")
   labs(title = "***",
        subtitle = "***",
        x = "***",
