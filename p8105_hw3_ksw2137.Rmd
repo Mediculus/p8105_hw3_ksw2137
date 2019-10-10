@@ -83,7 +83,7 @@ aisle_item_count <- insta_df %>%                   # assigned source df to a new
 
 ```
 
-The cleaned and filtered data for our aisle vs order count contains `r nrow(aisle_item_count)` unique aisle categories. `r pull(aisle_item_count, aisle)[pull(aisle_item_count, aisle_order_count) == max(pull(aisle_item_count, aisle_order_count))]` is/are the most ordered category with `r max(pull(aisle_item_count, aisle_order_count))` orders. We then make a graph below to illustrate the top `r nrow(aisle_item_count)` most ordered categories. 
+The cleaned and filtered data for our aisle vs order count contains `r nrow(aisle_item_count)` unique aisle categories. `r pull(aisle_item_count, aisle)[pull(aisle_item_count, aisle_order_count) == max(pull(aisle_item_count, aisle_order_count))]` is/are the most ordered category with `r max(pull(aisle_item_count, aisle_order_count))` orders. We then make a graph below to illustrate the top `r nrow(filter(aisle_item_count, aisle_order_count > 10000))` most ordered categories. 
 
 ```{r aisle_order_plot, eval = TRUE}
 
@@ -239,8 +239,8 @@ knitr::kable(list(t1 = head(count_loc_2002)[1:18],     # prints out the first ha
 
 
 # 2010 location counts per state
-count_loc_2010 <- brfss_count_loc %>%                      # assigns a new df for 2002 counts
-  filter(year == "2010",                               # filter by year 2002 and counts > 6
+count_loc_2010 <- brfss_count_loc %>%                  # assigns a new df for 2010 counts
+  filter(year == "2010",                               # filter by year 2010 and counts > 6
          county_per_state > 6
          ) %>%
   pivot_wider(names_from = state,                      # turn to wide form for kable()
@@ -250,14 +250,14 @@ count_loc_2010 <- brfss_count_loc %>%                      # assigns a new df fo
   select(-year)                                        # remove year column
 
 # segmented tables for 2010
-knitr::kable(list(t1 = head(count_loc_2010)[1:18],         # prints the first segment of table
-                  t2 = head(count_loc_2010)[19:35],        # prints second segment
-                  t3 = head(count_loc_2010)[36:45])        # prints third segment
+knitr::kable(list(t1 = head(count_loc_2010)[1:18],     # prints the first segment of table
+                  t2 = head(count_loc_2010)[19:35],    # prints second segment
+                  t3 = head(count_loc_2010)[36:45])    # prints third segment
              )
 
 ```
 
-The resulting table contains `r ncol(count_loc_2002)` states and `r ncol(count_loc_2010` states in 2002 and 2010 respectively. Interestingly, while working on the table, I noticed that there are 49 states in the 2002 data but 51 states in 2010. After investigating, this is because Montana (MT) started participating in 2004 and Virginia (VA) in 2007. 
+The resulting table contains `r ncol(count_loc_2002)` states and `r ncol(count_loc_2010)` states in 2002 and 2010 respectively. Interestingly, while working on the table, I noticed that there are 49 states in the 2002 data but 51 states in 2010. After investigating, this is because Montana (MT) started participating in 2004 and Virginia (VA) in 2007. 
 
 ### Problem 2b - excellent response
 
@@ -377,9 +377,6 @@ accel_df %>%
   ungroup() %>% 
   select(day_id, day, minute_mark, activity_count) %>% 
   group_by(day_id) %>% 
-  mutate(
-    minute_mark = as.Date(minute_mark)
-  ) %>% 
   ggplot(aes(x = minute_mark, y = activity_count, fill = day)) +
   geom_bar(stat = "identity", alpha = 1) +
   guides(color = guide_legend(override.aes = list(size = 5))) +
