@@ -430,7 +430,7 @@ base_accel_plot
 
 The graph above definitely shows a typical pattern of a person that wakes up at 06:00, and goes to sleep at ~23:00 - 24:00. This is apparent by his increased activity around 06:00 and decrease closer to 24:00. Interestingly, his activity seems to highest around 11:00 and 21:00 across the days. If we do `facet_grid()` however, we could get a more granular pattern.
 
-```{r}
+```{r faceted_accel_plot}
 
 base_accel_plot +
   facet_grid(day ~ .) +                    # split by day horizontally
