@@ -20,6 +20,8 @@ knitr::opts_chunk$set(echo = TRUE,
 Packages <- c("tidyverse", "dplyr")
 invisible(lapply(Packages, library, character.only = TRUE))
 
+
+
 # global settings for color palettes
 options(
   ggplot2.continuous.colour = "viridis",
@@ -71,9 +73,7 @@ The InstaCart dataset collects data on customers and the things they order from 
 * `aisle`: the name of the aisle such as fresh vegetables or yogurt
 * `department`: the name of the department (canned goods, snacks, frozen, ...)
 
-### Problem 1a - Making Graph for Top Aisle Categories 
-
-This dataset is huge as indicated previously. As such, we have to filter out some things in the interest of efficiency. 
+### Problem 1a - Graph of Top Aisle Categories 
 
 ```{r instacart_explore}
 
@@ -95,7 +95,8 @@ The cleaned and filtered data for our aisle vs order count contains `r nrow(aisl
 aisle_item_count %>% 
   filter(aisle_order_count > 10000) %>%                          # filters to contain counts > 10,000
   
-  ggplot(aes(x = reorder(aisle, aisle_order_count),              # make a plot of count vs aisle category
+# make a plot of count vs aisle category
+  ggplot(aes(x = reorder(aisle, aisle_order_count),              # reorders aisle (factor) by using count as ref
              y = aisle_order_count, 
              fill = -aisle_order_count)                          # set fill based on count in decreasing order
          ) +
@@ -119,7 +120,6 @@ aisle_item_count %>%
 The graph shows aisle categories with orders greater than 10,000 (e.g. butter-related items are ordered `r pull(aisle_item_count, aisle_order_count)[pull(aisle_item_count, aisle) == "Butter"]` times). Arranged from most to least, we can see a huge gap between the top ~5 versus the rest. In the graph, there are a total of `r nrow(filter(aisle_item_count, aisle_order_count > 10000))` items. 
 
 ### Problem 1b - Table for Top 3 Items in Particular Aisles
-We are also interested in the top 3 items in the "Baking Ingredients", "Dog Food Care", and "Packaged Vegetables Fruits" categories. Similarly, we need to filter our base dataframe to obtain these variables of interest.
 
 ```{r insta_top3}
 
@@ -143,10 +143,9 @@ instacart %>%
 
 ```
 
-The table above is a 9 x 3 grid; arranged first by aisle category in alphabetical order then by product count in decreasing order (from 1st - 3rd). Surprisingly packaged vegetables are, in general, much more popular compared to the other two. 
+We are also interested in the top 3 items in the "Baking Ingredients", "Dog Food Care", and "Packaged Vegetables Fruits" categories. The table above is a 9 x 3 grid; arranged first by aisle category in alphabetical order then by product count in decreasing order (from 1st - 3rd). Surprisingly packaged vegetables are, in general, much more popular compared to the other two. 
 
-### Problem 1c - Table for Mean Hour-of-Day to Order Certain Products   
-In this problem, we raise the question "what is the typical time that item x gets ordered in day y?". Particularly, we're interested in "Pink Lady Apples" and "Coffee Ice Cream". We will also split the time by day.
+### Problem 1c - Table for Mean Hour-of-Day to Order Certain Products 
 
 ```{r mean_hour_table}
 
@@ -171,9 +170,9 @@ instacart %>%
 
 ```
 
-Days were hardcoded as `0 - 6` and since it is a US company, I made the assumption that these start from Sun - Sat. The resulting table is a 2 x 7 table that gives the average hour these listed two items are ordered by day. Somewhat expected, the orders are typically done in the afternoon range. Ice cream orders are possibly (just a guess) due to the heat in the afternoon and thus acts as a "chiller" for consumers. 
+The table above shows the average hour of day that "Pink Lady Apples" and "Coffee Ice Cream" were ordered. Days were hardcoded as `0 - 6` and since it is a US company, I made the assumption that these start from Sun - Sat. The resulting table is a 2 x 7 table that gives the average hour these listed two items are ordered by day. Somewhat expected, the orders are typically done in the afternoon range. Ice cream orders are possibly (just a guess) due to the heat in the afternoon and thus acts as a "chiller" for consumers. 
 
-# Problem 2
+# Problem 2 - Exploring and Visualizing BRFSS SMART Data
 For this problem, we will be loading the BRFSS (Behavioral Risk Factors Surveillance System) data included in the p8105 package. As the data is huge and there were places where it's not tidy, we should tidy this up first by focusing on pertinent information (i.e. topic = "Overall Health" and only "Excellent" - "Poor" responses). 
 
 ```{r brfss_load}
@@ -191,26 +190,15 @@ brfss_smart2010 <- brfss_smart2010 %>%
          question, response, data_value) %>%   
   filter(topic == "Overall Health",             # filter df by topic of interest
          response %in%                          # and by specified survey response
-           c("Excellent", 
-             "Very good", 
-             "Good", 
-             "Fair", 
-             "Poor")
+           c("Excellent", "Very good", "Good", "Fair", "Poor")
          ) %>% 
   mutate(                                       # mutates the response variables to factor and re-order as well
     response = 
       factor(response,
-             levels = c("Poor",
-                        "Fair",
-                        "Good",
-                        "Very good",
-                        "Excellent")),
-    county = gsub(".*-", "",                    # removes the state indicator in counties
-                  county),
-    county = gsub(" County", "",                # removes the "county" since column title is county
-                  county)
-    ) %>% 
-  group_by(year, state)                         # group by state and year
+             levels = c("Poor", "Fair", "Good", "Very good", "Excellent")),
+    county = gsub(".*-", "", county),           # removes the state indicator in counties
+    county = gsub(" County", "", county)        # removes the "county" since column title is county
+    )
   
 ```
 
@@ -230,11 +218,12 @@ In this problem, we will be filtering relevant data in order to make a table tha
 ```{r brfss_count_table, results = "hold"}
 
 # base df
-brfss_count_loc <- brfss_smart2010 %>%                        # assigns a baseline, modified df for further cleaning
+brfss_count_loc <- brfss_smart2010 %>%                 # assigns a baseline, modified df for further cleaning
   select(year, state, county) %>%                      # selects relevant columns
+  group_by(year, state) %>% 
   distinct(county) %>%                                 # removes duplicate counties since we only need uniques
   summarize(county_per_state = n())                    # counts up the number of counties in each state
-
+  
 
 
 # 2002 location count per state
@@ -263,7 +252,7 @@ brfss_count_loc %>%                                    # assigns a new df for 20
 
 ```
 
-The resulting table above shows states with 7 or more participating counties in 2002 and 2010 respectively. Under each state is the number of counties within the state that responded. There are more than twice states that were part of the respondent in 2010 compared to 2002. We see that FL's counties increased significantly from 7 to 41. We also do not see `CT` in the 2010, likely because it had lower participating counties in 2010. Interestingly, while working on the table, I noticed that there are 49 states in the 2002 data but 51 states in 2010. After investigating, this is because Montana (MT) started participating in 2004 and Virginia (VA) in 2007. 
+The resulting table above shows states with 7 or more participating counties in 2002 and 2010 respectively. Under each state is the number of counties within the state that responded. There are more than twice states that were part of the respondent in 2010 compared to 2002. We see that FL's counties increased significantly from `r pull(brfss_count_loc, county_per_state)[pull(brfss_count_loc, state) == "FL" & pull(brfss_count_loc, year) == "2002"]` to `r pull(brfss_count_loc, county_per_state)[pull(brfss_count_loc, state) == "FL" & pull(brfss_count_loc, year) == "2010"]`. We also do not see Connecticut (CT) in the 2010, likely because it had lower participating counties in 2010. Interestingly, while working on the table, I noticed that there are 49 states in the 2002 data but 51 states in 2010. After investigating, this is because Montana (MT) started participating in 2004 and Virginia (VA) in 2007. 
 
 ### Problem 2b - Fluctuations in "Excellent" Responses over Time by State 
 In this problem, we are trying to collect data on how the average "excellent" responses fluctuate over time in each state. Since there are ~50 states, our graph will unfortunately look like a "spaghetti". 
@@ -271,17 +260,15 @@ In this problem, we are trying to collect data on how the average "excellent" re
 ```{r spaghetti_plot}
 
 # filter out source data for plotting
-spaghetti_plot <- brfss_smart2010 %>% 
+brfss_smart2010 %>% 
   select(year, state, response, data_value) %>%                 # select relevant columns
+  group_by(year, state) %>% 
   filter(response == "Excellent") %>%                           # filter to contain excellent responses only
-  drop_na(data_value) %>%                                       # drop any NA (for states that didn't participate)
-  summarize(avg_data = mean(data_value)) %>%                    # create a new df to include mean # of responses
+  summarize(avg_data = mean(data_value, na.rm = TRUE)) %>%      # create a new df to include mean # of responses
   
 # spaghetti plot for excellent responses
-  ggplot(aes(x = year, y = avg_data,                            # color category by state
-             color = state)
-         ) +   
-  geom_line(size = 1, alpha = 0.8) +                            # thicker line-size for increased visibility
+  ggplot(aes(x = year, y = avg_data, color = state)) +          # color category by state
+  geom_line(size = 1, alpha = 0.8, na.rm = TRUE) +              # thicker line-size for increased visibility
   theme(legend.position = "right") +                            # legend position adjustment
   scale_x_discrete(limits = 2002:2010) +                        # adjust min, max of x-axis range
   guides(color = guide_legend(override.aes = list(size = 5))) + # resize the color code for legends
@@ -292,29 +279,11 @@ spaghetti_plot <- brfss_smart2010 %>%
        color = "State"
        )
 
-spaghetti_plot
-
 ```
 
-The resulting line graph above does indeed look like a "spaghetti". However, based on the plot, we can definitely see certain "outliers". For example, there was a significant dip in the response in 2005. Based on our color legends, it is likely Wyoming (WY). Evaluating further, the state seems to be consistently on the very low end of excellent response. This might indicate that the overall health of the population there is less than excellent or the citizens might expect too much for an "excellent" health. By using `facet_wrap`, we might be able to see better separation between states:
+The resulting line graph above does indeed look like a "spaghetti". However, based on the plot, we can definitely see certain "outliers". For example, there was a significant dip in the response in 2005. Based on our color legends, it is likely Wyoming (WY) or West Virginia (WV). Evaluating further, the state seems to be consistently on the very low end of excellent response. This might indicate that the overall health of the population there is less than excellent or the citizens might expect too much for an "excellent" health.
 
-```{r spaghetti_facet}
-
-# made a very basic split-by-state plot to better
-# visualize trends
-spaghetti_plot +
-  facet_wrap(~state) +                              # splitting each line graphs by state for clarity
-  labs(title = "Split Line Graphs by State",        # removed title, legends, etc; reduce crowdedness in plot
-       subtitle = "", x = "", y = "") +       
-  theme(legend.position = "none",                   # legends not needed; as graphs are split by state
-        axis.title = element_blank(),               # axis title not needed
-        axis.text = element_blank())                # axis text not needed as well
-
-```
-
-After splitting each state, we can actually see that the outlier we saw earlier was actually West Virginia (WV). We also noticed that Indiana (IN) also has certain dips in its "excellent" response percentage. On the other hand Connecticut (CT), DC, and Massachusetts (MA) seem to be pretty consistent in their high "excellent" responses. 
-
-### Problem 2c - Making plot of responses in NY
+### Problem 2c - Distribution of Responses in NY Counties between 2006 and 2010
 In this problem, we are interested in the distribution of each responses between the counties in New York (NY) between year 2006 and 2010. As such, we first need to filter our base data to contain the relevant variables.
 
 ```{r response_distr_plot, fig.height = 7, fig.width = 6}
@@ -342,7 +311,7 @@ brfss_smart2010 %>%
 
 From the graph above, we can see that in both 2006 and 2010, most of the responses are clustered in the "Good" or "Very good". The distribution of poor to excellent on average doesn't seem to have changed much over the 4 years. However, we do see that there is an increase of 3 counties that were participating in 2010 (Bronx, Erie, and Kings). Further scrutiny shows us that New York and Nassau are consistently low in poor-good response and consequently high in very good - excellent responses.  
 
-# Problem 3
+# Problem 3 - Accelerometer Data Wrangling and Visualization
 In this problem we are dealing with the accelerometer dataset from an elderly man. We shall clean this so we could obtain pertinent information.
 
 ```{r accel_data}
@@ -368,8 +337,7 @@ accel_df <- read_csv("./data/accel_data.csv") %>%
            day != "Sunday" | day != "Saturday" ~ "Weekday"),
          day_type = factor(day_type)                            # changed the week-day/-end to factor
          ) %>% 
-  select(week, day_id, day, day_type, everything()) %>%         # rearrange columns
-  group_by(day_id)                                        # group by week and day_id
+  select(week, day_id, day, day_type, everything())             # rearrange columns
 
 ```
 
@@ -382,60 +350,47 @@ After cleaning the data, we have a `r nrow(accel_df)` x `r ncol(accel_df)` table
 * `minute_mark`: the cumulative minutes from 1 - 1440 (24 hours)
 * `activity_count`: the amount of activity in the given minute
 
-### Problem 3a - Total Activity Table from Day 1 - 35
+### Problem 3a - Total Daily Activity Table from Week 1 - 5 by Day of The Week
 In this problem, we will be adding up all activity count for each day and create a table for the 35 days and see the total daily activity counts. 
 
 ```{r}
 
-daily_activ <- accel_df %>% 
+accel_df %>% 
   select(week, day_id, day, activity_count) %>%             # select relevant columns
-  summarize(daily_activ_count = sum(activity_count)) %>%    # sums up the activity counts
-  pivot_wider(names_from = day_id,                          # turn it in form of day 1-35 so kable() can split
+  group_by(week, day) %>%                                   # group by week and day
+  summarize(daily_activ_count = sum(activity_count)) %>%    # sums up the activity counts per day per week
+  pivot_wider(names_from = day,                             # turn into reader-friendly form
               values_from = daily_activ_count
-              )
-
-knitr::kable(                                               # prints out table split by weeks
-  list(wk1 = head(daily_activ)[1:7],
-       wk2 = head(daily_activ)[8:14],
-       wk3 = head(daily_activ)[15:21],
-       wk4 = head(daily_activ)[22:28],
-       wk5 = head(daily_activ)[29:35])
-  )
+              ) %>%                                         
+  rename("Week" = week) %>% 
+  knitr::kable()                                            # prints the table
 
 ```
+
+In the table above, we see that there is no real patterns to be seen if we go from week 1-5 day-by-day. However, if we look through each column of days, we see that this person's activities on Sunday has been decreasing consistently. His weekdays are generally very active with spikes in Monday - week 3 and Friday - week 5. Anomalies of much lower activities include Monday - week 1, Friday - week 4, Saturday - week 4, and Saturday - week 5. Since Saturday seem to have same numbers, this likely represents times where the person did not wear the tracker, which may also be the case for other, significantly low activities. 
 
 ### Problem 3b - Activity Tracking over 35 Days
 In this problem we are interested to see the pattern of this patient's behavior for each day of the week. We will make an "activity" graph to hopefully find some patterns in his daily activities.
 
 ```{r daily_accel_plot}
 
-base_accel_plot <- accel_df %>% 
+accel_df %>% 
   ungroup() %>%                                                     # ungroup so select() works
-  select(day_id, day, minute_mark, activity_count) %>%              # select relevant variables
-  group_by(day_id) %>%                                              # re-group by relevant variables
-  ggplot(aes(x = minute_mark/60, y = activity_count, fill = day)) + # make a 24-hour plot with days as factor
-  geom_bar(stat = "identity", alpha = 1, size = 5) +                # make bar plots
+  select(week, day_id, day, minute_mark, activity_count) %>%        # select relevant variables
+  ggplot(aes(x = minute_mark/60, y = activity_count,                # make a 24-hour plot with days as factor
+             fill = day)) +
+  geom_point(aes(color = day), alpha = 0.7) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
   theme(legend.position = "right") +                                # adjust legend position
   scale_x_discrete(limits = 0:24) +                                 # re-organize the x-labels
   labs(title = "24-hour Activity Count Over 35 Days",               # add labels to title, axes, etc
        subtitle = "Grouped by Day of The Week",
        x = "Time of Day (hours)",
        y = "Activity Count",
-       fill = ""
+       fill = "",
+       color = ""
        )
 
-base_accel_plot
-
 ```
 
-The graph above definitely shows a typical pattern of a person that wakes up at 06:00, and goes to sleep at ~23:00 - 24:00. This is apparent by his increased activity around 06:00 and decrease closer to 24:00. Interestingly, his activity seems to highest around 11:00 and 21:00 across the days. If we do `facet_grid()` however, we could get a more granular pattern.
-
-```{r faceted_accel_plot}
-
-base_accel_plot +
-  facet_grid(day ~ .) +                    # split by day horizontally
-  theme(legend.position = "none",          # removed legends as it is split by day 
-        axis.title.y  = element_blank())   # removes y axes title; interested in relative ratio between days only
-
-```
-
+From the graph, we could see a gradual increase in activity count from 06:00 (likely waking up) with peaks at ~11:00 and ~21:00 primarily Fridays - Sundays. These are likely events where the person reaches the weekend and is going out for lunch/dinner outside home. Activities gradually declined again from ~21:00 which likely signifies the person going to sleep. However, similar to the spaghetti plot, this graph is too noisy to discern any further patterns. 
