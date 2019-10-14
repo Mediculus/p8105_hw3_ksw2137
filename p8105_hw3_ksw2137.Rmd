@@ -260,7 +260,7 @@ In this problem, we are trying to collect data on how the average "excellent" re
 ```{r spaghetti_plot}
 
 # filter out source data for plotting
-brfss_smart2010 %>% 
+spaghetti_plot <- brfss_smart2010 %>% 
   select(year, state, response, data_value) %>%                 # select relevant columns
   group_by(year, state) %>% 
   filter(response == "Excellent") %>%                           # filter to contain excellent responses only
@@ -279,9 +279,27 @@ brfss_smart2010 %>%
        color = "State"
        )
 
+spaghetti_plot
+
 ```
 
-The resulting line graph above does indeed look like a "spaghetti". However, based on the plot, we can definitely see certain "outliers". For example, there was a significant dip in the response in 2005. Based on our color legends, it is likely Wyoming (WY) or West Virginia (WV). Evaluating further, the state seems to be consistently on the very low end of excellent response. This might indicate that the overall health of the population there is less than excellent or the citizens might expect too much for an "excellent" health.
+The resulting line graph above does indeed look like a "spaghetti". However, based on the plot, we can definitely see certain "outliers". For example, there was a significant dip in the response in 2005. Based on our color legends, it is likely Wyoming (WY) or West Virginia (WV). However, this plot is generally not useful because we can hardly discern which state is which. If we split these state by `facet_wrap`, we could get a better picture:
+
+```{r}
+
+# made a very basic split-by-state plot to better
+# visualize trends
+spaghetti_plot +
+  facet_wrap(~state) +                              # splitting each line graphs by state for clarity
+  labs(title = "Split Line Graphs by State",        # removed title, legends, etc; reduce crowdedness in plot
+       subtitle = "", x = "", y = "") +       
+  theme(legend.position = "none",                   # legends not needed; as graphs are split by state
+        axis.title = element_blank(),               # axis title not needed
+        axis.text = element_blank())                # axis text not needed as well
+
+```
+
+Now that we split each state, we can see these patterns more clearly and can see that the previous "low-state" was West Virginia. WV seems to be consistently on the very low end of excellent response, which might indicate that the overall health of the population there is less than exceellent or the citizens might expect too much for an "excellent" health. We also noticed that Indiana (IN) also has certain dips in its "excellent" response percentage. On the other hand Connecticut (CT), DC, and Massachusetts (MA) seem to be pretty consistent in their high "excellent" responses. Virginia (VA) seems to have mysteriously disappeared but when we check our original summarize data, this was because Virginia (VA) only had 1 set of "excellent" response, which is in 2007. 
 
 ### Problem 2c - Distribution of Responses in NY Counties between 2006 and 2010
 In this problem, we are interested in the distribution of each responses between the counties in New York (NY) between year 2006 and 2010. As such, we first need to filter our base data to contain the relevant variables.
@@ -374,7 +392,7 @@ In this problem we are interested to see the pattern of this patient's behavior 
 
 ```{r daily_accel_plot}
 
-accel_df %>% 
+base_accel_plot <- accel_df %>% 
   ungroup() %>%                                                     # ungroup so select() works
   select(week, day_id, day, minute_mark, activity_count) %>%        # select relevant variables
   ggplot(aes(x = minute_mark/60, y = activity_count,                # make a 24-hour plot with days as factor
@@ -391,6 +409,8 @@ accel_df %>%
        color = ""
        )
 
+base_accel_plot
+
 ```
 
-From the graph, we could see a gradual increase in activity count from 06:00 (likely waking up) with peaks at ~11:00 and ~21:00 primarily Fridays - Sundays. These are likely events where the person reaches the weekend and is going out for lunch/dinner outside home. Activities gradually declined again from ~21:00 which likely signifies the person going to sleep. However, similar to the spaghetti plot, this graph is too noisy to discern any further patterns. 
+From the graph, we could see a gradual increase in activity count from 06:00 (likely waking up) with peaks at ~11:00 and ~21:00 primarily Fridays - Sundays. These are likely events where the person reaches the weekend and is going out for lunch/dinner outside home. Activities gradually declined again from ~21:00 which likely signifies the person going to sleep. However, similar to the spaghetti plot, this graph is too noisy to discern any further patterns.
