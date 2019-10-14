@@ -285,7 +285,7 @@ spaghetti_plot
 
 The resulting line graph above does indeed look like a "spaghetti". However, based on the plot, we can definitely see certain "outliers". For example, there was a significant dip in the response in 2005. Based on our color legends, it is likely Wyoming (WY) or West Virginia (WV). However, this plot is generally not useful because we can hardly discern which state is which. If we split these state by `facet_wrap`, we could get a better picture:
 
-```{r}
+```{r spaghetti_split}
 
 # made a very basic split-by-state plot to better
 # visualize trends
@@ -371,7 +371,7 @@ After cleaning the data, we have a `r nrow(accel_df)` x `r ncol(accel_df)` table
 ### Problem 3a - Total Daily Activity Table from Week 1 - 5 by Day of The Week
 In this problem, we will be adding up all activity count for each day and create a table for the 35 days and see the total daily activity counts. 
 
-```{r}
+```{r accel_total}
 
 accel_df %>% 
   select(week, day_id, day, activity_count) %>%             # select relevant columns
